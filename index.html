@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Catatan Walas + AI Gemini</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        twitter: {
+                            bg: '#15202b', card: '#1e2732', border: '#38444d', 
+                            text: '#ffffff', muted: '#8b98a5', hover: '#273340', accent: '#1d9bf0',
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
+        .transition-colors { transition-property: background-color, border-color, color, fill, stroke; transition-duration: 300ms; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-twitter-bg dark:text-twitter-text transition-colors flex flex-col min-h-screen">
+    <div id="root" class="flex-grow"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- ICONS ---
+        const IconUser = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const IconAward = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>;
+        const IconHeart = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>;
+        const IconTrendingUp = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+        const IconMessage = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>;
+        const IconCopy = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
+        const IconRefresh = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>;
+        const IconCheck = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
+        const IconSparkles = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
+        const IconMoon = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
+        const IconSun = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
+        const IconWand = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>;
+        const IconPlus = ({ size = 16, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 5v14"/><path d="M5 12h14"/></svg>;
+        const IconSettings = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+        const IconClose = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+
+
+        // --- MAIN COMPONENT ---
+        const WaliKelasApp = () => {
+            const [isDarkMode, setIsDarkMode] = useState(false);
+            
+            // App State
+            const [studentName, setStudentName] = useState('');
+            const [gradeLevel, setGradeLevel] = useState('SD');
+            const [selectedStrengths, setSelectedStrengths] = useState([]);
+            const [selectedCharacter, setSelectedCharacter] = useState([]);
+            const [selectedImprovements, setSelectedImprovements] = useState([]);
+            const [selectedMotivation, setSelectedMotivation] = useState('');
+
+            // Custom Input States
+            const [newStrength, setNewStrength] = useState('');
+            const [newCharacter, setNewCharacter] = useState('');
+            const [newImprovement, setNewImprovement] = useState('');
+            
+            // Text State
+            const [generatedText, setGeneratedText] = useState('');
+            const [isCopied, setIsCopied] = useState(false);
+            
+            // AI State
+            const [isLoadingAI, setIsLoadingAI] = useState(false);
+            const [isAiGenerated, setIsAiGenerated] = useState(false);
+
+            // API Key State
+            const [showSettings, setShowSettings] = useState(false);
+            const [apiKey, setApiKey] = useState('');
+
+            // --- LOAD SETTINGS ---
+            useEffect(() => {
+                // Check local storage for dark mode
+                const storedTheme = localStorage.getItem('theme');
+                if (storedTheme === 'dark') {
+                    setIsDarkMode(true);
+                    document.documentElement.classList.add('dark');
+                }
+                
+                // Check local storage for API Key
+                const storedKey = localStorage.getItem('gemini_api_key');
+                if (storedKey) setApiKey(storedKey);
+            }, []);
+
+            // Dark Mode Toggle
+            const toggleDarkMode = () => {
+                const newMode = !isDarkMode;
+                setIsDarkMode(newMode);
+                document.documentElement.classList.toggle('dark', newMode);
+                localStorage.setItem('theme', newMode ? 'dark' : 'light');
+            };
+
+            // Save API Key
+            const saveApiKey = (key) => {
+                setApiKey(key);
+                localStorage.setItem('gemini_api_key', key);
+            };
+
+            // Presets (Sama seperti sebelumnya)
+            const presets = {
+                academic: ["Matematika", "IPA/Sains", "Bahasa Inggris", "Bahasa Indonesia", "Seni Budaya", "Olahraga", "Hafalan Qur'an", "TIK/Komputer"],
+                nonAcademic: ["Paskibra", "Pramuka", "Futsal/Basket", "Seni Tari", "Menyanyi", "Kepemimpinan", "Organisasi Kelas"],
+                character: ["Sopan santun", "Jujur", "Disiplin", "Bertanggung jawab", "Peduli teman", "Ramah", "Religius", "Percaya diri", "Ringan tangan"],
+                improvements: ["Ketelitian mengerjakan soal", "Keaktifan bertanya", "Fokus di kelas", "Kerapian tulisan/pakaian", "Manajemen waktu", "Kehadiran/Tepat waktu", "Mengumpulkan tugas", "Interaksi sosial"],
+                motivations: [
+                    "Teruslah berkarya dan jangan takut bermimpi.",
+                    "Pertahankan prestasimu dan jadilah kebanggaan orang tua.",
+                    "Kegagalan adalah awal keberhasilan, jangan mudah menyerah.",
+                    "Asah terus potensimu, masa depan cerah menanti.",
+                    "Jadikan semester depan sebagai ajang pembuktian diri yang lebih baik."
+                ]
+            };
+
+            // Helper to add custom item
+            const handleAddCustom = (value, setValue, list, setList) => {
+                if (!value.trim()) return;
+                if (!list.includes(value.trim())) {
+                    setList([...list, value.trim()]);
+                }
+                setValue('');
+                setIsAiGenerated(false);
+            };
+
+            // Logic: Live Template Generator
+            useEffect(() => {
+                if (isAiGenerated) return; 
+                generateTemplateNote();
+            }, [studentName, gradeLevel, selectedStrengths, selectedCharacter, selectedImprovements, selectedMotivation, isAiGenerated]);
+
+            const generateTemplateNote = () => {
+                if (!studentName) {
+                    setGeneratedText("Silakan masukkan nama panggilan siswa terlebih dahulu...");
+                    return;
+                }
+                const pronoun = "Ananda";
+                const name = studentName.trim();
+                let text = `Selamat kepada ${pronoun} ${name} yang telah menyelesaikan semester ini dengan baik. `;
+                
+                if (selectedStrengths.length > 0) text += `${pronoun} menunjukkan potensi dan prestasi yang sangat membanggakan, terutama dalam bidang ${selectedStrengths.join(", ")}. `;
+                else text += `${pronoun} menunjukkan semangat belajar yang cukup baik di sekolah. `;
+
+                if (selectedCharacter.length > 0) text += `Bapak/Ibu guru sangat mengapresiasi karakter positif ${name} yang ${selectedCharacter.join(" serta ")}. Sikap ini menjadi teladan bagi teman-teman di kelas. `;
+
+                if (selectedImprovements.length > 0) {
+                    const impList = selectedImprovements.join(" dan ");
+                    text += (gradeLevel === 'SD') 
+                        ? `Untuk semester depan, ${name} perlu lebih rajin lagi dalam hal ${impList}. `
+                        : `Namun, ada beberapa aspek yang perlu ditingkatkan agar hasil belajar lebih optimal, terutama perihal ${impList}. `;
+                }
+
+                text += selectedMotivation ? `${selectedMotivation} ` : `Teruslah semangat belajar dan jadilah pribadi yang lebih baik. `;
+                text += `Terima kasih atas usaha kerasmu selama satu semester ini.`;
+                setGeneratedText(text);
+            };
+
+            // --- GEMINI API CALLER ---
+            const callGemini = async (prompt) => {
+                // Use the user's stored API Key
+                if (!apiKey) {
+                    setShowSettings(true);
+                    throw new Error("API Key belum diatur. Silakan masukkan API Key di pengaturan.");
+                }
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || `HTTP Error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, AI tidak dapat menghasilkan teks saat ini.";
+            };
+
+            // --- AI HANDLERS ---
+            const handleAiMagicWrite = async () => {
+                if (!studentName) return alert("Mohon isi nama siswa terlebih dahulu.");
+                setIsLoadingAI(true);
+                
+                const prompt = `
+                    Berperanlah sebagai Wali Kelas yang bijaksana dan empatik. Buatkan narasi catatan rapor dalam Bahasa Indonesia untuk siswa:
+                    Nama Panggilan: ${studentName}
+                    Jenjang: ${gradeLevel} (Sesuaikan kompleksitas bahasa dengan jenjang ini).
+                    
+                    Data Siswa:
+                    - Kelebihan/Prestasi: ${selectedStrengths.join(", ") || "Cukup baik secara umum"}
+                    - Karakter Positif: ${selectedCharacter.join(", ") || "Baik"}
+                    - Perlu Ditingkatkan: ${selectedImprovements.join(", ") || "Tidak ada catatan khusus"}
+                    - Pesan Motivasi: ${selectedMotivation}
+
+                    Instruksi:
+                    1. Gabungkan poin-poin di atas menjadi 1-2 paragraf yang mengalir alami, hangat, dan personal.
+                    2. Hindari pengulangan kata yang kaku. Gunakan variasi kalimat.
+                    3. Mulailah dengan apresiasi, lalu area perbaikan (dengan bahasa konstruktif/lembut), dan tutup dengan motivasi.
+                    4. Jangan gunakan format daftar (bullet points), gunakan format narasi paragraf.
+                `;
+
+                try {
+                    const result = await callGemini(prompt);
+                    setGeneratedText(result.trim());
+                    setIsAiGenerated(true); 
+                } catch (error) {
+                    alert(error.message);
+                } finally {
+                    setIsLoadingAI(false);
+                }
+            };
+
+            const handleAiRefine = async () => {
+                if (!generatedText || generatedText.length < 10) return;
+                setIsLoadingAI(true);
+                const prompt = `Perbaiki dan perhalus catatan rapor berikut agar terdengar lebih profesional, tatabahasa baku (EYD), namun tetap hangat dan memotivasi. Teks Asli: "${generatedText}". Konteks: Catatan rapor dari guru ke orang tua/siswa. Bahasa Indonesia.`;
+
+                try {
+                    const result = await callGemini(prompt);
+                    setGeneratedText(result.trim());
+                    setIsAiGenerated(true);
+                } catch (error) {
+                    alert(error.message);
+                } finally {
+                    setIsLoadingAI(false);
+                }
+            };
+
+            const handleManualChange = (e) => {
+                setGeneratedText(e.target.value);
+                setIsAiGenerated(true); 
+            };
+
+            const resetForm = () => {
+                setStudentName('');
+                setSelectedStrengths([]);
+                setSelectedCharacter([]);
+                setSelectedImprovements([]);
+                setSelectedMotivation('');
+                setGeneratedText('');
+                setIsAiGenerated(false); 
+            };
+
+            const toggleSelection = (item, list, setList) => {
+                const newList = list.includes(item) ? list.filter(i => i !== item) : [...list, item];
+                setList(newList);
+                setIsAiGenerated(false); 
+            };
+
+            const copyToClipboard = () => {
+                navigator.clipboard.writeText(generatedText).then(() => {
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 2000);
+                });
+            };
+
+            return (
+                <div className="flex flex-col min-h-screen relative">
+                    
+                    {/* SETTINGS MODAL */}
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                            <div className="bg-white dark:bg-twitter-card p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-twitter-border">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                                        <IconSettings className="text-indigo-600" /> Pengaturan API
+                                    </h3>
+                                    <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-twitter-hover rounded-full">
+                                        <IconClose size={20} className="text-slate-500" />
+                                    </button>
+                                </div>
+                                <p className="text-sm text-slate-600 dark:text-twitter-muted mb-4">
+                                    Agar fitur AI berfungsi saat di-deploy, masukkan <b>Google Gemini API Key</b> Anda di sini. Kunci ini hanya disimpan di browser Anda (Local Storage) dan tidak dikirim ke server lain.
+                                </p>
+                                <div className="mb-4">
+                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Gemini API Key</label>
+                                    <input 
+                                        type="password" 
+                                        value={apiKey} 
+                                        onChange={(e) => saveApiKey(e.target.value)}
+                                        placeholder="Tempel API Key di sini..."
+                                        className="w-full p-3 rounded-lg border border-slate-300 dark:border-twitter-border bg-slate-50 dark:bg-twitter-bg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-2">
+                                        Belum punya? <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-indigo-600 hover:underline">Dapatkan API Key Gratis di sini.</a>
+                                    </p>
+                                </div>
+                                <button onClick={() => setShowSettings(false)} className="w-full py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition">
+                                    Simpan & Tutup
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navbar */}
+                    <nav className="bg-white dark:bg-twitter-bg border-b border-slate-200 dark:border-twitter-border sticky top-0 z-30">
+                        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
+                            <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2 tracking-tight">
+                                <IconSparkles className="text-indigo-600 dark:text-twitter-accent" />
+                                Generator Catatan Walas
+                            </h1>
+                            <div className="flex gap-2">
+                                <button onClick={() => setShowSettings(true)} className="p-2 rounded-full bg-slate-100 dark:bg-twitter-hover text-slate-600 dark:text-twitter-text hover:bg-slate-200 transition-colors" title="Pengaturan API Key">
+                                    <IconSettings size={20} />
+                                </button>
+                                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-slate-100 dark:bg-twitter-hover text-slate-600 dark:text-twitter-text hover:bg-slate-200 transition-colors">
+                                    {isDarkMode ? <IconSun size={20} /> : <IconMoon size={20} />}
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <main className="flex-grow max-w-6xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
+                        
+                        {/* LEFT: FORM INPUT */}
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-twitter-card p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-twitter-border transition-colors">
+                                {/* Identity */}
+                                <div className="flex items-center gap-2 mb-3 font-bold border-b pb-2 text-indigo-600 dark:text-twitter-accent border-slate-100 dark:border-twitter-border">
+                                    <IconUser size={20} /><h3>Identitas Siswa</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-twitter-muted mb-2 uppercase">Nama Panggilan Siswa</label>
+                                        <input type="text" value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Contoh: Budi"
+                                            className="w-full p-3 rounded-xl border border-slate-300 dark:border-twitter-border bg-white dark:bg-twitter-bg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-twitter-accent outline-none transition-colors" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-twitter-muted mb-2 uppercase">Jenjang</label>
+                                        <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)}
+                                            className="w-full p-3 rounded-xl border border-slate-300 dark:border-twitter-border bg-white dark:bg-twitter-bg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-twitter-accent outline-none appearance-none">
+                                            <option value="SD">SD (Sederhana)</option>
+                                            <option value="SMP">SMP (Menengah)</option>
+                                            <option value="SMA">SMA (Formal)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Chips Sections */}
+                                {[
+                                    { 
+                                        title: "Prestasi & Potensi", 
+                                        icon: IconAward, 
+                                        color: "text-emerald-600 dark:text-emerald-400", 
+                                        items: [...presets.academic, ...presets.nonAcademic], 
+                                        selected: selectedStrengths, 
+                                        set: setSelectedStrengths, 
+                                        active: "bg-emerald-500",
+                                        customValue: newStrength,
+                                        setCustomValue: setNewStrength
+                                    },
+                                    { 
+                                        title: "Sikap & Karakter", 
+                                        icon: IconHeart, 
+                                        color: "text-rose-500 dark:text-rose-400", 
+                                        items: presets.character, 
+                                        selected: selectedCharacter, 
+                                        set: setSelectedCharacter, 
+                                        active: "bg-rose-500",
+                                        customValue: newCharacter,
+                                        setCustomValue: setNewCharacter
+                                    },
+                                    { 
+                                        title: "Area Perbaikan", 
+                                        icon: IconTrendingUp, 
+                                        color: "text-amber-500 dark:text-amber-400", 
+                                        items: presets.improvements, 
+                                        selected: selectedImprovements, 
+                                        set: setSelectedImprovements, 
+                                        active: "bg-amber-500",
+                                        customValue: newImprovement,
+                                        setCustomValue: setNewImprovement
+                                    }
+                                ].map((section, idx) => (
+                                    <div key={idx}>
+                                        <div className={`flex items-center gap-2 mb-3 font-bold border-b pb-2 ${section.color} border-slate-100 dark:border-twitter-border`}>
+                                            <section.icon size={20} /><h3>{section.title}</h3>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {section.items.map((item, i) => (
+                                                <button key={i} onClick={() => toggleSelection(item, section.selected, section.set)}
+                                                    className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${
+                                                        section.selected.includes(item) ? `${section.active} text-white shadow-md transform scale-105 border-transparent` : `bg-white dark:bg-twitter-bg text-slate-600 dark:text-twitter-muted border-slate-200 dark:border-twitter-border hover:bg-slate-100 dark:hover:bg-twitter-hover`
+                                                    }`}>
+                                                    {item}
+                                                </button>
+                                            ))}
+                                            {/* Render selected custom items that are NOT in presets */}
+                                            {section.selected.filter(item => !section.items.includes(item)).map((item, i) => (
+                                                 <button key={`custom-${i}`} onClick={() => toggleSelection(item, section.selected, section.set)}
+                                                    className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${section.active} text-white shadow-md border-transparent`}>
+                                                    {item}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {/* Input "Lainnya" */}
+                                        <div className="flex gap-2 mb-6">
+                                            <input 
+                                                type="text" 
+                                                value={section.customValue}
+                                                onChange={(e) => section.setCustomValue(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAddCustom(section.customValue, section.setCustomValue, section.selected, section.set)}
+                                                placeholder="Tambah pilihan lainnya..."
+                                                className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-twitter-border bg-slate-50 dark:bg-twitter-bg text-slate-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                            />
+                                            <button 
+                                                onClick={() => handleAddCustom(section.customValue, section.setCustomValue, section.selected, section.set)}
+                                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-twitter-hover text-slate-500 dark:text-twitter-text hover:bg-slate-200 dark:hover:bg-slate-700"
+                                            >
+                                                <IconPlus size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Motivation */}
+                                <div className="flex items-center gap-2 mb-3 font-bold border-b pb-2 text-blue-500 dark:text-twitter-accent border-slate-100 dark:border-twitter-border">
+                                    <IconMessage size={20} /><h3>Pesan Motivasi</h3>
+                                </div>
+                                <div className="space-y-2 mb-4">
+                                    {presets.motivations.map((msg, idx) => (
+                                        <div key={idx} onClick={() => { setSelectedMotivation(msg); setIsAiGenerated(false); }}
+                                            className={`p-3 rounded-xl text-sm font-medium cursor-pointer border transition-all ${selectedMotivation === msg ? 'bg-blue-50 dark:bg-[#1d9bf020] border-blue-500 dark:border-twitter-accent text-blue-800 dark:text-twitter-accent' : 'bg-slate-50 dark:bg-twitter-bg border-transparent hover:bg-slate-100 dark:hover:bg-twitter-hover text-slate-600 dark:text-twitter-muted'}`}>
+                                            "{msg}"
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Custom Motivation Input */}
+                                <div className="relative">
+                                    <textarea
+                                        value={selectedMotivation}
+                                        onChange={(e) => { setSelectedMotivation(e.target.value); setIsAiGenerated(false); }}
+                                        placeholder="Atau tulis pesan motivasi Anda sendiri di sini..."
+                                        className="w-full p-3 text-sm rounded-xl border border-slate-200 dark:border-twitter-border bg-slate-50 dark:bg-twitter-bg text-slate-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 h-20 resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT: OUTPUT & AI CONTROLS */}
+                        <div className="lg:sticky lg:top-24 h-fit space-y-4">
+                            <div className="bg-white dark:bg-twitter-card p-6 rounded-2xl shadow-lg border border-indigo-100 dark:border-twitter-border transition-colors relative overflow-hidden">
+                                
+                                {/* Loading Overlay */}
+                                {isLoadingAI && (
+                                    <div className="absolute inset-0 bg-white/80 dark:bg-twitter-bg/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-indigo-600 dark:text-twitter-accent">
+                                        <IconSparkles className="animate-spin mb-2" size={40} />
+                                        <p className="font-bold animate-pulse">Sedang meracik kata...</p>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        Preview Catatan
+                                        {isAiGenerated && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">Manual / AI Mode</span>}
+                                    </h2>
+                                    <button onClick={resetForm} className="p-2 text-slate-400 dark:text-twitter-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition" title="Reset">
+                                        <IconRefresh size={18} />
+                                    </button>
+                                </div>
+
+                                {/* Text Area */}
+                                <div className="relative mb-4">
+                                    <textarea
+                                        value={generatedText}
+                                        onChange={handleManualChange}
+                                        className="w-full h-72 p-4 text-base leading-relaxed rounded-xl transition resize-none font-medium border focus:ring-2 outline-none bg-slate-50 dark:bg-twitter-bg text-slate-700 dark:text-white border-slate-200 dark:border-twitter-border focus:ring-indigo-500 dark:focus:ring-twitter-accent focus:bg-white dark:focus:bg-twitter-bg"
+                                        placeholder="Hasil catatan akan muncul di sini..."
+                                    />
+                                    <div className="absolute bottom-4 right-4">
+                                        <span className="text-xs font-bold text-slate-400 dark:text-twitter-muted bg-slate-100 dark:bg-twitter-hover px-2 py-1 rounded">
+                                            {generatedText.length} chars
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* AI Action Buttons */}
+                                <div className="grid grid-cols-2 gap-3 mb-2">
+                                    <button 
+                                        onClick={handleAiMagicWrite}
+                                        disabled={isLoadingAI || !studentName}
+                                        className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-twitter-border hover:border-indigo-500 dark:hover:border-twitter-accent hover:bg-indigo-50 dark:hover:bg-twitter-hover transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <IconSparkles className="text-indigo-500 dark:text-twitter-accent mb-1 group-hover:scale-110 transition-transform" size={24} />
+                                        <span className="text-xs font-bold text-slate-600 dark:text-twitter-text">✨ Buat Narasi Alami</span>
+                                    </button>
+
+                                    <button 
+                                        onClick={handleAiRefine}
+                                        disabled={isLoadingAI || generatedText.length < 10}
+                                        className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-purple-200 dark:border-twitter-border hover:border-purple-500 dark:hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-twitter-hover transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <IconWand className="text-purple-500 dark:text-purple-400 mb-1 group-hover:rotate-12 transition-transform" size={24} />
+                                        <span className="text-xs font-bold text-slate-600 dark:text-twitter-text">🪄 Perhalus Bahasa</span>
+                                    </button>
+                                </div>
+
+                                <p className="text-[10px] sm:text-xs text-center text-slate-400 dark:text-twitter-muted mb-4 italic">
+                                    *Fitur AI memerlukan API Key Gemini. Klik ikon gerigi (<span className="inline-block align-middle"><IconSettings size={12} /></span>) di atas untuk mengatur.
+                                </p>
+
+                                {/* Copy Button */}
+                                <button
+                                    onClick={copyToClipboard}
+                                    disabled={!generatedText || !studentName}
+                                    className={`flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl font-bold text-white transition-all transform active:scale-95 ${isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-twitter-accent dark:hover:bg-sky-600 shadow-lg shadow-indigo-200 dark:shadow-none'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {isCopied ? <><IconCheck size={20} /> Tersalin!</> : <><IconCopy size={20} /> Salin Teks</>}
+                                </button>
+                            </div>
+
+                        </div>
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="bg-white dark:bg-twitter-card border-t border-slate-200 dark:border-twitter-border mt-auto">
+                        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col items-center justify-center text-center">
+                            <p className="text-sm font-medium text-slate-500 dark:text-twitter-muted">
+                                @2025 | Pengembang <a href="//agungjnugraha.github.io/portofolio" title="ajnugraha apps" target="_blank" className="text-indigo-600 dark:text-twitter-accent hover:underline">AJ Nugraha</a>
+                            </p>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<WaliKelasApp />);
+    </script>
+</body>
+</html>
