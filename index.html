@@ -37,7 +37,7 @@
                     animation: {
                         'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'float': 'float 3s ease-in-out infinite',
-                        'slide-up': 'slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards', // Animasi baru: Muncul dari bawah
+                        'slide-up': 'slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
                     },
                     keyframes: {
                         float: {
@@ -88,10 +88,27 @@
         const IconArrowRight = ({ size = 20, className }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
 
 
+        // --- HELPER FUNCTION FOR LIST FORMATTING ---
+        const formatList = (list) => {
+            if (!list || list.length === 0) {
+                return "";
+            }
+            if (list.length === 1) {
+                return list[0];
+            }
+            if (list.length === 2) {
+                return `${list[0]} dan ${list[1]}`;
+            }
+            // For more than 2 items
+            const allButLast = list.slice(0, -1).join(', ');
+            const lastItem = list[list.length - 1];
+            return `${allButLast}, dan ${lastItem}`;
+        };
+
         // --- MAIN COMPONENT ---
         const WaliKelasApp = () => {
             const [isDarkMode, setIsDarkMode] = useState(false);
-            const [showSplash, setShowSplash] = useState(true); // SPLASH SCREEN STATE
+            const [showSplash, setShowSplash] = useState(true);
             
             // App State
             const [studentName, setStudentName] = useState('');
@@ -145,8 +162,8 @@
             const presets = {
                 academic: ["Matematika", "IPA/Sains", "Bahasa Inggris", "Bahasa Indonesia", "Seni Budaya", "Olahraga", "Hafalan Qur'an", "TIK/Komputer"],
                 nonAcademic: ["Paskibra", "Pramuka", "Futsal/Basket", "Seni Tari", "Menyanyi", "Kepemimpinan", "Organisasi Kelas"],
-                character: ["Sopan santun", "Jujur", "Disiplin", "Bertanggung jawab", "Peduli teman", "Ramah", "Religius", "Percaya diri", "Ringan tangan"],
-                improvements: ["Ketelitian mengerjakan soal", "Keaktifan bertanya", "Fokus di kelas", "Kerapian tulisan/pakaian", "Manajemen waktu", "Kehadiran/Tepat waktu", "Mengumpulkan tugas", "Interaksi sosial"],
+                character: ["sopan santun", "jujur", "disiplin", "bertanggung jawab", "peduli teman", "ramah", "religius", "percaya diri", "ringan tangan"],
+                improvements: ["ketelitian mengerjakan soal", "keaktifan bertanya", "fokus di kelas", "kerapian tulisan/pakaian", "manajemen waktu", "kehadiran/Tepat waktu", "mengumpulkan tugas", "interaksi sosial"],
                 motivations: [
                     "Teruslah berkarya dan jangan takut bermimpi.",
                     "Pertahankan prestasimu dan jadilah kebanggaan orang tua.",
@@ -177,18 +194,21 @@
                 }
                 const pronoun = "Ananda";
                 const name = studentName.trim();
-                let text = `Selamat kepada ${pronoun} ${name} yang telah menyelesaikan semester ini dengan baik. `;
+                let text = "";
                 
-                if (selectedStrengths.length > 0) text += `${pronoun} menunjukkan potensi dan prestasi yang sangat membanggakan, terutama dalam bidang ${selectedStrengths.join(", ")}. `;
-                else text += `${pronoun} menunjukkan semangat belajar yang cukup baik di sekolah. `;
+                const strengthsText = formatList(selectedStrengths);
+                const characterText = formatList(selectedCharacter);
+                const improvementsText = formatList(selectedImprovements);
 
-                if (selectedCharacter.length > 0) text += `Bapak/Ibu guru sangat mengapresiasi karakter positif ${name} yang ${selectedCharacter.join(" serta ")}. Sikap ini menjadi teladan bagi teman-teman di kelas. `;
+                if (strengthsText) text += `${pronoun} ${name} menunjukkan potensi dan prestasi yang sangat membanggakan, terutama dalam bidang ${strengthsText}. `;
+                else text += `${pronoun} ${name} menunjukkan semangat belajar yang cukup baik di sekolah. `;
 
-                if (selectedImprovements.length > 0) {
-                    const impList = selectedImprovements.join(" dan ");
+                if (characterText) text += `Bapak/Ibu guru sangat mengapresiasi karakter positif ${name} yang ${characterText}. Sikap ini menjadi teladan bagi teman-teman di kelas. `;
+
+                if (improvementsText) {
                     text += (gradeLevel === 'SD') 
-                        ? `Untuk semester depan, ${name} perlu lebih rajin lagi dalam hal ${impList}. `
-                        : `Namun, ada beberapa aspek yang perlu ditingkatkan agar hasil belajar lebih optimal, terutama perihal ${impList}. `;
+                        ? `Untuk semester depan, ${name} perlu lebih rajin lagi dalam hal ${improvementsText}. `
+                        : `Namun, ada beberapa aspek yang perlu ditingkatkan agar hasil belajar lebih optimal, terutama perihal ${improvementsText}. `;
                 }
 
                 text += selectedMotivation ? `${selectedMotivation} ` : `Teruslah semangat belajar dan jadilah pribadi yang lebih baik. `;
@@ -226,13 +246,14 @@
                     Nama Panggilan: ${studentName}
                     Jenjang: ${gradeLevel} (Sesuaikan kompleksitas bahasa dengan jenjang ini).
                     Data Siswa:
-                    - Kelebihan/Prestasi: ${selectedStrengths.join(", ") || "Cukup baik secara umum"}
-                    - Karakter Positif: ${selectedCharacter.join(", ") || "Baik"}
-                    - Perlu Ditingkatkan: ${selectedImprovements.join(", ") || "Tidak ada catatan khusus"}
+                    - Kelebihan/Prestasi: ${formatList(selectedStrengths) || "Cukup baik secara umum"}
+                    - Karakter Positif: ${formatList(selectedCharacter) || "Baik"}
+                    - Perlu Ditingkatkan: ${formatList(selectedImprovements) || "Tidak ada catatan khusus"}
                     - Pesan Motivasi: ${selectedMotivation}
                     Instruksi:
                     1. Gabungkan poin-poin di atas menjadi 1-2 paragraf yang mengalir alami, hangat, dan personal.
                     2. Mulailah dengan apresiasi, lalu area perbaikan (dengan bahasa konstruktif/lembut), dan tutup dengan motivasi.
+                    3. Jangan gunakan kalimat pembuka seperti "Selamat kepada..."
                 `;
                 try {
                     const result = await callGemini(prompt);
@@ -293,30 +314,25 @@
                 return (
                     <div className="fixed inset-0 z-50 bg-slate-100/50 dark:bg-twitter-bg/50 backdrop-blur-sm flex items-center justify-center p-4 transition-colors">
                         <div className="max-w-lg w-full bg-white dark:bg-twitter-card rounded-[10px] shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden relative animate-slide-up">
-                            {/* Decorative Top Gradient - Sedikit diperkecil tingginya */}
                             <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shrink-0"></div>
                             
                             <div className="p-6 md:p-8 text-center flex flex-col items-center">
-                                {/* Elegant Frame - Diperkecil */}
                                 <div className="p-1 rounded-full border-2 border-dashed border-indigo-200 dark:border-slate-600 mb-3 relative shrink-0">
                                     <div className="bg-indigo-50 dark:bg-twitter-hover p-2.5 rounded-full">
                                         <IconSparkles size={32} className="text-indigo-600 dark:text-twitter-accent animate-float" />
                                     </div>
                                 </div>
                                 
-                                {/* Judul - Font size disesuaikan */}
                                 <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 dark:text-white mb-3 tracking-tight">
-                                    Generator Catatan Walas
+                                    Generator Catatan Walas V.2
                                 </h1>
                                 
-                                {/* Deskripsi - Padding dan Font size diperkecil */}
                                 <div className="relative p-4 mb-5 elegant-border rounded-xl bg-slate-50 dark:bg-twitter-bg/50">
                                     <p className="text-slate-600 dark:text-twitter-muted leading-relaxed text-xs md:text-sm">
                                         "Selamat datang, Bapak/Ibu Guru! Aplikasi ini dirancang untuk membantu Anda menyusun narasi rapor yang <b>personal</b>, <b>hangat</b>, dan <b>memotivasi</b> siswa dengan mudah dan cepat."
                                     </p>
                                 </div>
 
-                                {/* Tombol - Padding disesuaikan */}
                                 <button 
                                     onClick={() => setShowSplash(false)}
                                     className="group px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all shadow-lg hover:shadow-indigo-500/30 flex items-center gap-2 transform hover:-translate-y-0.5 shrink-0 text-sm"
@@ -325,7 +341,6 @@
                                     <IconArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                 </button>
                                 
-                                {/* Footer - Margin dan Font size diperkecil */}
                                 <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 w-full shrink-0">
                                     <p className="text-[10px] text-slate-400 dark:text-slate-500">
                                         @2025 | Pengembang <a href="//agungjnugraha.github.io/portofolio" title="ajnugraha apps" target="_blank" className="hover:text-indigo-500 transition-colors">AJ Nugraha</a>
@@ -483,7 +498,6 @@
                                                         {item}
                                                     </button>
                                                 ))}
-                                                {/* Render selected custom items that are NOT in presets */}
                                                 {section.selected.filter(item => !section.items.includes(item)).map((item, i) => (
                                                     <button key={`custom-${i}`} onClick={() => toggleSelection(item, section.selected, section.set)}
                                                         className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${section.active} text-white shadow-md border-transparent`}>
@@ -491,7 +505,6 @@
                                                     </button>
                                                 ))}
                                             </div>
-                                            {/* Input "Lainnya" */}
                                             <div className="flex gap-2 mb-6">
                                                 <input 
                                                     type="text" 
@@ -523,7 +536,6 @@
                                             </div>
                                         ))}
                                     </div>
-                                    {/* Custom Motivation Input */}
                                     <div className="relative">
                                         <textarea
                                             value={selectedMotivation}
@@ -539,7 +551,6 @@
                             <div className="lg:sticky lg:top-24 h-fit space-y-4">
                                 <div className="bg-white dark:bg-twitter-card p-6 rounded-2xl shadow-lg border border-indigo-100 dark:border-twitter-border transition-colors relative overflow-hidden">
                                     
-                                    {/* Loading Overlay */}
                                     {isLoadingAI && (
                                         <div className="absolute inset-0 bg-white/80 dark:bg-twitter-bg/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-indigo-600 dark:text-twitter-accent">
                                             <IconSparkles className="animate-spin mb-2" size={40} />
@@ -557,7 +568,6 @@
                                         </button>
                                     </div>
 
-                                    {/* Text Area */}
                                     <div className="relative mb-4">
                                         <textarea
                                             value={generatedText}
@@ -572,7 +582,6 @@
                                         </div>
                                     </div>
 
-                                    {/* AI Action Buttons */}
                                     <div className="grid grid-cols-2 gap-3 mb-2">
                                         <button 
                                             onClick={handleAiMagicWrite}
@@ -597,7 +606,6 @@
                                         *Fitur AI memerlukan API Key Gemini. Klik ikon gerigi (<span className="inline-block align-middle"><IconSettings size={12} /></span>) di atas untuk mengatur.
                                     </p>
 
-                                    {/* Copy Button */}
                                     <button
                                         onClick={copyToClipboard}
                                         disabled={!generatedText || !studentName}
